@@ -8,7 +8,7 @@ while id < 5000:
 	a = randint(0,100)
 	b = randint(0,100)
 	c = randint(0,100)
-	line = "%d, %d, %d, %d\n" % (id,a,b,c)
+	line = "%d,%d,%d,%d\n" % (id,a,b,c)
 	id+=1
 	
 	#print "%s" % line
