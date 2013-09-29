@@ -190,16 +190,16 @@ StrategyGetBuffer(BufferAccessStrategy strategy, bool *lock_held)
 
 	/* Nothing on the freelist, so run the "clock sweep" algorithm */
 	trycounter = NBuffers;
-	usageListSearchPosition = 0;
+	usageListSearchPosition = NBuffers;
 	for (;;)
 	{
 		// buf = &BufferDescriptors[StrategyControl->nextVictimBuffer];
 
 		//if (++StrategyControl->nextVictimBuffer >= NBuffers)
-		if(usageListSearchPosition >= NBuffers)
+		if(usageListSearchPosition <= 0)
 		{
 			//StrategyControl->nextVictimBuffer = 0;
-			usageListSearchPosition = 0;
+			usageListSearchPosition = NBuffers;
 			StrategyControl->completePasses++;
 		}
 		
@@ -238,7 +238,7 @@ StrategyGetBuffer(BufferAccessStrategy strategy, bool *lock_held)
 			elog(ERROR, "no unpinned buffers available");
 		}
 		UnlockBufHdr(buf);
-		usageListSearchPosition +=1;
+		usageListSearchPosition -=1;
 	}
 }
 
