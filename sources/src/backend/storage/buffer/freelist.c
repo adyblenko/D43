@@ -206,20 +206,18 @@ StrategyGetBuffer(BufferAccessStrategy strategy, bool *lock_held)
 		LockBufHdr(buf);
 		if (buf->refcount == 0)
 		{
-			//if (buf->usage_count > 0)
-			//{
-			//	buf->usage_count--;
-			//	trycounter = NBuffers;
-			//}
-			//else
-			//{
-			/* Found a usable buffer */
-			if (strategy != NULL)
-				AddBufferToRing(strategy, buf);
-			
-			//TODO: once we know which buffer to evict, we should move any ones before it, to after it.
-			return buf;
-			//}
+			if (buf->usage_count > 0)
+			{
+				buf->usage_count--;
+				trycounter = NBuffers;
+			}
+			else
+			{
+				/* Found a usable buffer */
+				if (strategy != NULL)
+					AddBufferToRing(strategy, buf);
+				return buf;
+			}
 		}
 		else if (--trycounter == 0)
 		{
