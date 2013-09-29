@@ -172,6 +172,7 @@ typedef struct sbufdesc
 
 /* in buf_init.c */
 extern PGDLLIMPORT BufferDesc *BufferDescriptors;
+extern int *BufferUsageList;
 
 /* in localbuf.c */
 extern BufferDesc *LocalBufferDescriptors;
@@ -180,6 +181,8 @@ extern BufferDesc *LocalBufferDescriptors;
 /*
  * Internal routines: only called by bufmgr
  */
+
+extern void PrintArray(int array[], int arrayLength);
 
 /* freelist.c */
 extern volatile BufferDesc *StrategyGetBuffer(BufferAccessStrategy strategy,

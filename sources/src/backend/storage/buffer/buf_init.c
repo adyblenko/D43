@@ -17,8 +17,11 @@
 #include "storage/bufmgr.h"
 #include "storage/buf_internals.h"
 
+//void PrintArray(int array[], int arrayLength);
+void InitBufferUsageList(void);
 
 BufferDesc *BufferDescriptors;
+int *BufferUsageList;
 char	   *BufferBlocks;
 int32	   *PrivateRefCount;
 
@@ -62,6 +65,19 @@ int32	   *PrivateRefCount;
  *		backend.
  */
 
+void 
+PrintArray(int array[], int arrayLength)
+{
+	fprintf(stderr, "%s","[");
+	int x = 0;
+	while (x < arrayLength - 1)
+	{
+		fprintf(stderr, "%d, ", array[x]);
+		x+=1;
+	}
+	fprintf(stderr, "%d", array[arrayLength-1]);
+	fprintf(stderr, "%s","] \n");
+}
 
 /*
  * Initialize shared buffer pool
@@ -75,13 +91,16 @@ InitBufferPool(void)
 	bool		foundBufs,
 				foundDescs;
 
+				
 	BufferDescriptors = (BufferDesc *)
 		ShmemInitStruct("Buffer Descriptors",
 						NBuffers * sizeof(BufferDesc), &foundDescs);
-
+						
 	BufferBlocks = (char *)
 		ShmemInitStruct("Buffer Blocks",
 						NBuffers * (Size) BLCKSZ, &foundBufs);
+						
+	InitBufferUsageList();
 
 	if (foundDescs || foundBufs)
 	{
@@ -128,6 +147,25 @@ InitBufferPool(void)
 	/* Init other shared buffer-management stuff */
 	StrategyInitialize(!foundDescs);
 }
+
+/*
+* Initialize BufferUsageList to an array of the Buffer Ids 0 -> NBuffers -1
+*/
+void InitBufferUsageList(void)
+{
+	int i = 0;
+	fprintf(stderr, "%s", "BufferUsageList Initializing... \n");
+	BufferUsageList = malloc(sizeof(int) * NBuffers);
+	while(i<NBuffers)
+	{
+		BufferUsageList[i] = i;
+		i+=1;
+	}
+	
+	fprintf(stderr, "%s", "BufferUsageList Initialized: \n");
+	PrintArray(BufferUsageList, NBuffers);
+}
+
 
 /*
  * Initialize access to shared buffer pool

@@ -114,6 +114,7 @@ StrategyGetBuffer(BufferAccessStrategy strategy, bool *lock_held)
 	volatile BufferDesc *buf;
 	Latch	   *bgwriterLatch;
 	int			trycounter;
+	int usageListSearchPosition;
 
 	/*
 	 * If given a strategy object, see whether it can select a buffer. We
@@ -189,15 +190,20 @@ StrategyGetBuffer(BufferAccessStrategy strategy, bool *lock_held)
 
 	/* Nothing on the freelist, so run the "clock sweep" algorithm */
 	trycounter = NBuffers;
+	usageListSearchPosition = 0;
 	for (;;)
 	{
-		buf = &BufferDescriptors[StrategyControl->nextVictimBuffer];
+		// buf = &BufferDescriptors[StrategyControl->nextVictimBuffer];
 
-		if (++StrategyControl->nextVictimBuffer >= NBuffers)
+		//if (++StrategyControl->nextVictimBuffer >= NBuffers)
+		if(usageListSearchPosition >= NBuffers)
 		{
-			StrategyControl->nextVictimBuffer = 0;
+			//StrategyControl->nextVictimBuffer = 0;
+			usageListSearchPosition = 0;
 			StrategyControl->completePasses++;
 		}
+		
+		buf = &BufferDescriptors[BufferUsageList[usageListSearchPosition]];
 
 		/*
 		 * If the buffer is pinned or has a nonzero usage_count, we cannot use
@@ -206,18 +212,18 @@ StrategyGetBuffer(BufferAccessStrategy strategy, bool *lock_held)
 		LockBufHdr(buf);
 		if (buf->refcount == 0)
 		{
-			if (buf->usage_count > 0)
-			{
-				buf->usage_count--;
-				trycounter = NBuffers;
-			}
-			else
-			{
-				/* Found a usable buffer */
-				if (strategy != NULL)
-					AddBufferToRing(strategy, buf);
-				return buf;
-			}
+			// if (buf->usage_count > 0)
+// 			{
+// 				buf->usage_count--;
+// 				trycounter = NBuffers;
+// 			}
+			// else
+// 			{
+			/* Found a usable buffer */
+			if (strategy != NULL)
+				AddBufferToRing(strategy, buf);
+			return buf;
+			// }
 		}
 		else if (--trycounter == 0)
 		{
@@ -232,6 +238,7 @@ StrategyGetBuffer(BufferAccessStrategy strategy, bool *lock_held)
 			elog(ERROR, "no unpinned buffers available");
 		}
 		UnlockBufHdr(buf);
+		usageListSearchPosition +=1;
 	}
 }
 

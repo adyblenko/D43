@@ -108,6 +108,12 @@ static volatile BufferDesc *BufferAlloc(SMgrRelation smgr,
 			BlockNumber blockNum,
 			BufferAccessStrategy strategy,
 			bool *foundPtr);
+			
+//BEGIN NEW FUNCTIONS:
+static void MoveBufferToEndOfUsageList(int bufferId);
+static int GetPositionOfBufferInUsageList(int bufferId);
+static void ShiftSectionOfUsageListLeft(int position, int lastEntry);
+//END NEW FUNCTIONS.
 static void FlushBuffer(volatile BufferDesc *buf, SMgrRelation reln);
 static void AtProcExit_Buffers(int code, Datum arg);
 static int	rnode_comparator(const void *p1, const void *p2);
@@ -589,7 +595,10 @@ BufferAlloc(SMgrRelation smgr, char relpersistence, ForkNumber forkNum,
 				*foundPtr = FALSE;
 			}
 		}
-
+		//BEGIN NEW CODE:
+		//removes and adds the buffer to the end of the list
+		MoveBufferToEndOfUsageList(buf->buf_id);
+		//END NEW CODE.
 		return buf;
 	}
 
@@ -842,6 +851,10 @@ BufferAlloc(SMgrRelation smgr, char relpersistence, ForkNumber forkNum,
 		buf->flags |= BM_TAG_VALID;
 	buf->usage_count = 1;
 
+	//BEGIN NEW CODE:
+	//if the buffer is not already inside the list it will append it to the end, otherwise we will remove it and add it at the end.
+	MoveBufferToEndOfUsageList(buf->buf_id);
+	//END NEW CODE.
 	UnlockBufHdr(buf);
 
 	if (oldFlags & BM_TAG_VALID)
@@ -865,6 +878,51 @@ BufferAlloc(SMgrRelation smgr, char relpersistence, ForkNumber forkNum,
 
 	return buf;
 }
+//BEGIN NEW CODE:
+static void
+MoveBufferToEndOfUsageList(int bufferId)
+{
+	int curPosition = GetPositionOfBufferInUsageList(bufferId);
+	
+	if(curPosition >= 0)
+	{
+		ShiftSectionOfUsageListLeft(curPosition, bufferId);
+	}
+	else
+	{
+		fprintf(stderr, "%s %d %s", "ERROR: The buffer could not be found in the BufferUsageList. BufferID:", bufferId, "\n");
+	}
+	
+	fprintf(stderr, "Buffer usage list after swap: \n");
+	PrintArray(BufferUsageList, NBuffers);
+}
+
+static int 
+GetPositionOfBufferInUsageList(int bufferId)
+{
+	int x = 0;
+	while(x < NBuffers)
+	{
+		if(BufferUsageList[x] == bufferId)
+		{
+			return x;
+		}
+		x+=1;
+	}
+	return -1;
+}
+
+static void 
+ShiftSectionOfUsageListLeft(int position, int lastEntry)
+{
+	while(position < NBuffers-1)
+	{
+		BufferUsageList[position] = BufferUsageList[position+1];
+		position +=1;
+	}
+	BufferUsageList[NBuffers-1] = lastEntry;
+}
+//END NEW CODE.
 
 /*
  * InvalidateBuffer -- mark a shared buffer invalid and return it to the
