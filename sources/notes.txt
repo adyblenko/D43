@@ -1,0 +1,4 @@
+Notes:
+
+- bufmgr.c : BufferAlloc - Good starting point to look for how pages are evicted.
+- freelist.c : StrategyGetBuffer - Used in getting buffer to be evicted.
