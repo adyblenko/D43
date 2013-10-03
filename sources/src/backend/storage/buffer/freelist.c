@@ -72,8 +72,11 @@ AddBufferToFreelist(BufferDesc *bf)
 	IsNotInQueue(bf);
 
 	/* change bf so it points to inFrontOfNew and its successor */
-	bf->freePrev = SharedFreeList->freePrev;
-	bf->freeNext = Free_List_Descriptor;
+	//bf->freePrev = SharedFreeList->freePrev;
+	//bf->freeNext = Free_List_Descriptor;
+
+	bf->freeNext = SharedFreeList->freeNext;
+	bf->freePrev = Free_List_Descriptor;
 
 	/* insert new into chain */
 	BufferDescriptors[bf->freeNext].freePrev = bf->buf_id;
