@@ -220,15 +220,18 @@ GetFreeBuffer(void)
 int 
 GetLeastUsedBufferId(void)
 {
-	BufferDesc *cur = SharedFreeList->freeNext;
-	int minId = cur->buf_id;
-	while(cur != Free_List_Descriptor)
+	int curId = SharedFreeList->freeNext;
+	int minId = BufferDescriptors[curId].buf_id;
+	BufferDesc *curBuf;
+
+	while(curId != Free_List_Descriptor)
 	{
-		if(cur->usagecount < BufferDescriptor[minId].usagecount)
+		curBuf = &(BufferDescriptors[curId]);
+		if(curBuf->usagecount < BufferDescriptors[minId].usagecount)
 		{
-			minId = cur->buf_id;
+			minId = curId;
 		}
-		cur = cur->freeNext;
+		curId = curBuf->freeNext;
 	}
 	return minId;
 }
