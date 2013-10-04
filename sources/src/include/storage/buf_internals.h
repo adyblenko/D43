@@ -88,6 +88,7 @@ typedef struct sbufdesc
 
 	BufFlags	flags;			/* see bit definitions above */
 	unsigned	refcount;		/* # of backends holding pins on buffer */
+	unsigned usagecount;
 
 	LWLockId	io_in_progress_lock;	/* to wait for I/O to complete */
 	LWLockId	cntx_lock;		/* to lock access to page context */

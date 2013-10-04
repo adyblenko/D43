@@ -35,6 +35,7 @@
 
 static BufferDesc *SharedFreeList;
 
+int GetLeastUsedBufferId(void);
 /*
  * State-checking macros
  */
@@ -111,6 +112,7 @@ PinBuffer(BufferDesc *buf)
 	if (PrivateRefCount[b] == 0)
 		buf->refcount++;
 	PrivateRefCount[b]++;
+	buf->usagecount++;
 	Assert(PrivateRefCount[b] > 0);
 }
 
@@ -203,7 +205,7 @@ GetFreeBuffer(void)
 				 errmsg("out of free buffers")));
 		return NULL;
 	}
-	buf = &(BufferDescriptors[SharedFreeList->freeNext]);
+	buf = &(BufferDescriptors[GetLeastUsedBufferId()]);
 
 	/* remove from freelist queue */
 	BufferDescriptors[buf->freeNext].freePrev = buf->freePrev;
@@ -215,6 +217,21 @@ GetFreeBuffer(void)
 	return buf;
 }
 
+int 
+GetLeastUsedBufferId(void)
+{
+	BufferDesc *cur = SharedFreeList->freeNext;
+	int minId = cur->buf_id;
+	while(cur != Free_List_Descriptor)
+	{
+		if(cur->usagecount < BufferDescriptor[minId].usagecount)
+		{
+			minId = cur->buf_id;
+		}
+		cur = cur->freeNext;
+	}
+	return minId;
+}
 /*
  * InitFreeList -- initialize the dummy buffer descriptor used
  *		as a freelist head.

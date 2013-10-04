@@ -398,6 +398,7 @@ BufferAlloc(Relation reln,
 		 */
 		Assert(buf->refcount == 0);
 		buf->refcount = 1;
+		buf->usagecount = 1;
 		PrivateRefCount[BufferDescriptorGetBuffer(buf) - 1] = 1;
 
 		if (buf->flags & BM_DIRTY || buf->cntxDirty)
