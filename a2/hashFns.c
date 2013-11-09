@@ -24,55 +24,47 @@ void printbincharpad(char c)
     putchar('\n');
 }
 
-unsigned fnv_hash ( void *key, int len )
+
+int wang_hash(int a)
 {
-	unsigned char *p = key;
-	unsigned h = 2166136261;
-	int i;
-	for ( i = 0; i < len; i++ )
-		h = ( h * 16777619 ) ^ p[i];
-	return h;
+    a = (a ^ 61) ^ (a >> 16);
+    a = a + (a << 3);
+    a = a ^ (a >> 4);
+    a = a * 0x27d4eb2d;
+    a = a ^ (a >> 15);
+    return a;
 }
 
+char insertIntoBitArray(char eightBitArray, int bucketNumber){
 
+	switch(bucketNumber){
+                case 1: eightBitArray |= BIT1;break;
+                case 2: eightBitArray |= BIT2;break;
+                case 3: eightBitArray |= BIT3;break;
+                case 4: eightBitArray |= BIT4;break;
+                case 5: eightBitArray |= BIT5;break;
+                case 6: eightBitArray |= BIT6;break;
+                case 7: eightBitArray |= BIT7;break;
+                case 8: eightBitArray |= BIT8;break;
+                default: printf("%s %d \n", "Unknown bucket", bucketNumber);
+        }
 
-
-int main()
-{
-	//char bits[8] = {BIT1, BIT2, BIT3, BIT4, BIT5, BIT6, BIT7, BIT8};
-
-	char eightBitArray = 0;
-	
-	//TODO: make array bigger so that 0s count? / convert int to binary rep?
-	int data = 44;
-	int len = 2;//strlen(data);
-
-	int hashValue = fnv_hash(&data, len);
-	
-	//TODO: make sure normalized between 1 and 8
-	int normalized = hashValue / ((double)INT_MAX / 7.0) + 1.0;
-	
-	printf("%s %d \n", "normalized", normalized);
-	//insert hash values into the bitArray
-	switch(normalized){
-		case 1: eightBitArray |= BIT1;break;
-		case 2: eightBitArray |= BIT2;break;
-		case 3: eightBitArray |= BIT3;break;
-		case 4: eightBitArray |= BIT4;break;
-		case 5: eightBitArray |= BIT5;break;
-		case 6: eightBitArray |= BIT6;break;
-		case 7: eightBitArray |= BIT7;break;
-		case 8: eightBitArray |= BIT8;break;
-		default: printf("%s %d \n", "Unknown hash value", hashValue);
-	}
-	
 	printbincharpad(eightBitArray);
-	
-	//check if hash value is in array
-	int queryHash = 0;
+
+	return eightBitArray;
+}
+
+int normalizeHashValue(int hashValue){
+	int normalized = hashValue / ((double)INT_MAX / 7.0) + 1.0;
+	printf("%s %d \n", "normalized", normalized);
+	return normalized;
+}
+
+int isInBitArray(char eightBitArray, int queryBucketNumber){
+
 	char result;
 
-	switch(queryHash){
+	switch(queryBucketNumber){
                 case 1: result = eightBitArray & BIT1;break;
                 case 2: result = eightBitArray & BIT2;break;
                 case 3: result = eightBitArray & BIT3;break;
@@ -81,23 +73,106 @@ int main()
                 case 6: result = eightBitArray & BIT6;break;
                 case 7: result = eightBitArray & BIT7;break;
                 case 8: result = eightBitArray & BIT8;break;
-                default: printf("%s %d \n", "Unknown hash value", queryHash);
+                default: printf("%s %d \n", "Unknown hash value", queryBucketNumber);
         }
-
-	if (result == 0){
-		printf("%s", "NO match");
-	}else{
-		printf("%s", "match!");
-	}
 
 	printbincharpad(result);
 
+	if (result == 0){
+                return 0;
+        }else{
+                return 1;
+        }
+}
+
+
+
+int main()
+{
+	char eightBitArray = 0;
+	
+
+	int data = 44;
+
+	int hashValue = wang_hash(data);
+	
+	//make sure hash is normalized to bucket value between 1 and 8
+	int bucketNum = normalizeHashValue(hashValue);
+
+	//insert hash values into the bitArray
+	eightBitArray = insertIntoBitArray(eightBitArray, bucketNum);
+	
+	//check if hash value is in array
+	int queryData = 352;
+
+	int queryHash = wang_hash(queryData);
+	queryHash = normalizeHashValue(queryHash);
+	int isInArray = isInBitArray(eightBitArray, queryHash);
+	if (isInArray){
+		printf("%s \n", "Match!");
+	}else{
+		printf("%s \n", "No Match");
+	}
 
 }
+
+//http://burtleburtle.net/bob/hash/integer.html
+
+
+int three_shift_hash( int a)
+{
+    a = a ^ (a>>4);
+    a = (a^0xdeadbeef) + (a<<5);
+    a = a ^ (a>>11);
+    return a;
+}
+
+int java_hashmap_hash(int h) {
+    // This function ensures that hashCodes that differ only by
+    // constant multiples at each bit position have a bounded
+    // number of collisions (approximately 8 at default load factor).
+    h ^= (h >> 20) ^ (h >> 12);
+    return h ^ (h >> 7) ^ (h >> 4);
+}
+
+int half_avalanche_hash( int a)
+{
+    a = (a+0x479ab41d) + (a<<8);
+    a = (a^0xe4aa10ce) ^ (a>>5);
+    a = (a+0x9942f0a6) - (a<<14);
+    a = (a^0x5aedd67d) ^ (a>>3);
+    a = (a+0x17bea992) + (a<<7);
+    return a;
+}
+
+int full_avalanche_hash( int a)
+{
+    a = (a+0x7ed55d16) + (a<<12);
+    a = (a^0xc761c23c) ^ (a>>19);
+    a = (a+0x165667b1) + (a<<5);
+    a = (a+0xd3a2646c) ^ (a<<9);
+    a = (a+0xfd7046c5) + (a<<3);
+    a = (a^0xb55a4f09) ^ (a>>16);
+    return a;
+}
+
+
+//VVVVVVVVVVVVVVVVV___Below are string hashes, probably not needed___VVVVVVVVVVVVVV
+
 
 
 //http://eternallyconfuzzled.com/tuts/algorithms/jsw_tut_hashing.aspx
 
+
+unsigned fnv_hash ( void *key, int len )
+{
+        unsigned char *p = key;
+        unsigned h = 2166136261;
+        int i;
+        for ( i = 0; i < len; i++ )
+                h = ( h * 16777619 ) ^ p[i];
+        return h;
+}
 
 unsigned oat_hash ( void *key, int len )
 {
