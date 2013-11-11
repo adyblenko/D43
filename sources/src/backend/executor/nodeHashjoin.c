@@ -64,8 +64,8 @@ ExecHashJoin(HashJoinState *node)
 	HeapTuple	curtuple;
 	TupleTableSlot *outerTupleSlot;
 	int			i;
-	int			keyval;
-	bool 			isNull;
+	int			keyval = 0;
+	bool 			isNull = false;
 	int allowCount = 0;
 	/*
 	 * get information from HashJoin node

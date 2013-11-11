@@ -115,7 +115,7 @@ ExecHash(HashState *node)
 		fprintf(stderr, "Getting join attribute value...");
 		ExecHashGetBucket(hashtable, econtext, hashkeys, &keyval);
 		
-		fprintf(stderr, "Join attribute val = %d\n", keyval);
+		fprintf(stderr, "got key val!\n");
 
 		fprintf(stderr, "Running through hash functions!\n");
 		//run keyval through bloom filter hash functions and add it
@@ -587,6 +587,7 @@ ExecHashGetBucket(HashJoinTable hashtable,
 		keyval = ExecEvalExpr((ExprState *) lfirst(hk),
 							  econtext, &isNull, NULL);
 
+		*returnJoinValue = keyval;
 		/*
 		 * Compute the hash function
 		 */
@@ -597,9 +598,10 @@ ExecHashGetBucket(HashJoinTable hashtable,
 			hkey = DatumGetUInt32(FunctionCall1(&hashtable->hashfunctions[i],
 												keyval));
 			hashkey ^= hkey;
+			
 		}
 		
-		*returnJoinValue = keyval;
+		
 
 		i++;
 	}
