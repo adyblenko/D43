@@ -6,6 +6,7 @@
 #define BIT3 0x20
 #define BIT2 0x40
 #define BIT1 0x80
+#define NUMBUCKETS 8000
 
 
 #include <stdio.h>
@@ -35,9 +36,18 @@ int wang_hash(int a)
     return a;
 }
 
-char insertIntoBitArray(char eightBitArray, int bucketNumber){
+void insertIntoBitArray(char* bitArrays, int bucketNumber){
 
-	switch(bucketNumber){
+	//integer division!
+	int pointerNumber = bucketNumber / 8;
+	int arrayOffset = bucketNumber % 8;
+	if (arrayOffset == 0){
+		arrayOffset = 8;
+	}
+
+	char eightBitArray = bitArrays[pointerNumber];
+
+	switch(arrayOffset){
                 case 1: eightBitArray |= BIT1;break;
                 case 2: eightBitArray |= BIT2;break;
                 case 3: eightBitArray |= BIT3;break;
@@ -46,25 +56,34 @@ char insertIntoBitArray(char eightBitArray, int bucketNumber){
                 case 6: eightBitArray |= BIT6;break;
                 case 7: eightBitArray |= BIT7;break;
                 case 8: eightBitArray |= BIT8;break;
-                default: printf("%s %d \n", "Unknown bucket", bucketNumber);
+                default: printf("%s %d \n", "Unknown bucket", arrayOffset);
         }
 
 	printbincharpad(eightBitArray);
 
-	return eightBitArray;
+	bitArrays[pointerNumber] = eightBitArray;
 }
 
 int normalizeHashValue(int hashValue){
-	int normalized = hashValue / ((double)INT_MAX / 7.0) + 1.0;
+	int normalized = hashValue / ((double)INT_MAX / ((double)NUMBUCKETS-1.0)) + 1.0;
 	printf("%s %d \n", "normalized", normalized);
 	return normalized;
 }
 
-int isInBitArray(char eightBitArray, int queryBucketNumber){
+int isInBitArray(char* bitArrays, int queryBucketNumber){
 
 	char result;
 
-	switch(queryBucketNumber){
+	//integer division!
+        int pointerNumber = queryBucketNumber / 8;
+        int arrayOffset = queryBucketNumber % 8;
+        if (arrayOffset == 0){
+                arrayOffset = 8;
+        }
+
+        char eightBitArray = bitArrays[pointerNumber];
+
+	switch(arrayOffset){
                 case 1: result = eightBitArray & BIT1;break;
                 case 2: result = eightBitArray & BIT2;break;
                 case 3: result = eightBitArray & BIT3;break;
@@ -73,7 +92,7 @@ int isInBitArray(char eightBitArray, int queryBucketNumber){
                 case 6: result = eightBitArray & BIT6;break;
                 case 7: result = eightBitArray & BIT7;break;
                 case 8: result = eightBitArray & BIT8;break;
-                default: printf("%s %d \n", "Unknown hash value", queryBucketNumber);
+                default: printf("%s %d \n", "Unknown hash value", arrayOffset);
         }
 
 	printbincharpad(result);
@@ -85,36 +104,43 @@ int isInBitArray(char eightBitArray, int queryBucketNumber){
         }
 }
 
+void initArray(char* bitArrays){
+
+	int i;
+  	for(i=0;i<NUMBUCKETS;i++){
+		bitArrays[i] = 0;
+	}
+}
+
+int main()
+{
+ 	char bitArrays[NUMBUCKETS];
+ 	initArray(bitArrays);
+ 
+ 	int data = 44;
+ 
+ 	int hashValue = wang_hash(data);
+ 	
+ 	//make sure hash is normalized to bucket value between 1 and NUMBUCKETS
+ 	int bucketNum = normalizeHashValue(hashValue);
+ 
+ 	//insert hash values into the bitArray
+ 	insertIntoBitArray(bitArrays, bucketNum);
+
+ 	//check if hash value is in array
+ 	int queryData = 352;
+ 
+ 	int queryHash = wang_hash(queryData);
+ 	queryHash = normalizeHashValue(queryHash);
+ 	int isInArray = isInBitArray(bitArrays, queryHash);
+ 	if (isInArray){
+ 		printf("%s \n", "Match!");
+ 	}else{
+ 		printf("%s \n", "No Match");
+ 	}
 
 
-// int main()
-// {
-// 	char eightBitArray = 0;
-// 	
-// 
-// 	int data = 44;
-// 
-// 	int hashValue = wang_hash(data);
-// 	
-// 	//make sure hash is normalized to bucket value between 1 and 8
-// 	int bucketNum = normalizeHashValue(hashValue);
-// 
-// 	//insert hash values into the bitArray
-// 	eightBitArray = insertIntoBitArray(eightBitArray, bucketNum);
-// 	
-// 	//check if hash value is in array
-// 	int queryData = 352;
-// 
-// 	int queryHash = wang_hash(queryData);
-// 	queryHash = normalizeHashValue(queryHash);
-// 	int isInArray = isInBitArray(eightBitArray, queryHash);
-// 	if (isInArray){
-// 		printf("%s \n", "Match!");
-// 	}else{
-// 		printf("%s \n", "No Match");
-// 	}
-// 
-// }
+} 
 
 //http://burtleburtle.net/bob/hash/integer.html
 
