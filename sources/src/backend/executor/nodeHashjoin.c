@@ -29,11 +29,11 @@ static TupleTableSlot *ExecHashJoinOuterGetTuple(PlanState *node,
 static TupleTableSlot *ExecHashJoinGetSavedTuple(HashJoinState *hjstate,
 						  BufFile *file,
 						  TupleTableSlot *tupleSlot);
-static int	ExecHashJoinNewBatch(HashJoinState *hjstate);
+static int ExecHashJoinNewBatch(HashJoinState *hjstate);
 
 //Bit Array Functions
-static int isInBitArray(char * bitArrays, int queryBucketNumber);
-static bool ValuePassesBloomFilter(char * bitArray, int value);
+int isInBitArray(char * bitArrays, int queryBucketNumber);
+bool ValuePassesBloomFilter(char * bitArray, int value);
 
 /* ----------------------------------------------------------------
  *		ExecHashJoin
@@ -54,6 +54,7 @@ ExecHashJoin(HashJoinState *node)
 	List	   *outerkeys;
 	List	   *joinqual;
 	List	   *otherqual;
+	List	   *key;
 	ScanDirection dir;
 	TupleTableSlot *inntuple;
 	ExprContext *econtext;
@@ -63,7 +64,7 @@ ExecHashJoin(HashJoinState *node)
 	TupleTableSlot *outerTupleSlot;
 	int			i;
 	int			keyval;
-
+	bool 			isNull;
 	/*
 	 * get information from HashJoin node
 	 */
@@ -132,7 +133,7 @@ ExecHashJoin(HashJoinState *node)
 		 */
 		hashNode->hashtable = hashtable;
 		(void) ExecProcNode((PlanState *) hashNode);
-		
+
 		//bloom filter should be constructed through the hash node
 		node->hj_BloomFilter = hashNode->bloomFilter;
 
@@ -165,11 +166,16 @@ ExecHashJoin(HashJoinState *node)
 				/* end of join */
 				return NULL;
 			}
-			
-			//get value for bloom filter
-			keyval = ExecEvalExpr((ExprState *) lfirst(outerkeys[0]),
-								  	econtext, &isNull, NULL);	
-					
+
+			foreach(key, outerkeys)
+			{
+
+
+				//get value for bloom filter
+				keyval = ExecEvalExpr((ExprState *) lfirst(key),
+									  	econtext, &isNull, NULL);
+			}
+
 			if(!ValuePassesBloomFilter(node->hj_BloomFilter, keyval))
 			{
 				//value does not pass bloom filter
@@ -769,7 +775,7 @@ ExecReScanHashJoin(HashJoinState *node, ExprContext *exprCtxt)
 		ExecReScan(((PlanState *) node)->lefttree, exprCtxt);
 }
 
-static bool ValuePassesBloomFilter(char * bitArray, int value)
+bool ValuePassesBloomFilter(char * bitArray, int value)
 {
 	int f;
 	for(f = 0; f < NUMHASHFUNCTIONS; f++)
@@ -807,7 +813,7 @@ int isInBitArray(char* bitArrays, int queryBucketNumber){
                 default: printf("%s %d \n", "Unknown hash value", arrayOffset);
         }
 
-	printbincharpad(result);
+	//printbincharpad(result);
 
 	if (result == 0){
                 return 0;

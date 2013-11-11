@@ -13,9 +13,10 @@
  */
 #ifndef NODEHASH_H
 #define NODEHASH_H
-
+#define NUMHASHFUNCTIONS 5
 
 #include "nodes/execnodes.h"
+#include <limits.h>
 
 extern int	ExecCountSlotsHash(Hash *node);
 extern HashState *ExecInitHash(Hash *node, EState *estate);
@@ -39,7 +40,6 @@ extern void ExecChooseHashTableSize(double ntuples, int tupwidth,
 						int *virtualbuckets,
 						int *physicalbuckets,
 						int *numbatches);
-						
 /*Bloom Filter Hash Functions*/
 extern int wang_hash(int a);
 extern int three_shift_hash(int a);
@@ -49,9 +49,18 @@ extern int full_avalanche_hash( int a);
 
 extern int normalizeHashValue(int hashValue);
 
-extern int *BloomHashFunctions;
+extern int (*BloomHashFunctions[NUMHASHFUNCTIONS])(int a);
 
 //Bit Array Functions
+#define BIT8 0x01
+#define BIT7 0x02
+#define BIT6 0x04
+#define BIT5 0x08
+#define BIT4 0x10
+#define BIT3 0x20
+#define BIT2 0x40
+#define BIT1 0x80
+
 extern void insertIntoBitArray(char * eightBitArray, int bucketNumber);
 
 #endif   /* NODEHASH_H */
