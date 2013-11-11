@@ -66,7 +66,7 @@ ExecHashJoin(HashJoinState *node)
 	int			i;
 	int			keyval = 0;
 	bool 			isNull = false;
-	int allowCount = 0;
+	int bloomCount = 0;
 	/*
 	 * get information from HashJoin node
 	 */
@@ -141,7 +141,6 @@ ExecHashJoin(HashJoinState *node)
 
 		//bloom filter should be constructed through the hash node
 		node->hj_BloomFilter = hashNode->bloomFilter;
-
 		fprintf(stderr, "Hash Table and Bloom Filter Have Been Built.\n");
 
 		/*
@@ -161,6 +160,7 @@ ExecHashJoin(HashJoinState *node)
 
 	for (;;)
 	{
+		fprintf(stderr, "Back here!");
 		/*
 		 * If we don't have an outer tuple, get the next one
 		 */
@@ -171,7 +171,7 @@ ExecHashJoin(HashJoinState *node)
 			if (TupIsNull(outerTupleSlot))
 			{
 				/* end of join */
-				fprintf(stderr, "The number that passed the filter is: %d\n", allowCount);
+				fprintf(stderr, "The number that passed the filter is: %d\n", bloomCount);
 				return NULL;
 			}
 
@@ -186,15 +186,17 @@ ExecHashJoin(HashJoinState *node)
 			 */
 			node->hj_CurBucketNo = ExecHashGetBucket(hashtable, econtext,
 													 outerkeys, &keyval);
-													
+
  			if(!ValuePassesBloomFilter(node->hj_BloomFilter, keyval))
  			{
+				fprintf(stderr, "It did not.");
  				//value does not pass bloom filter
  				node->hj_NeedNewOuter = true;
  				continue;	/* loop around for a new outer tuple */
  			}
 
- 			allowCount ++;
+			fprintf(stderr, "Allow count: %d\n", bloomCount);
+ 			bloomCount = bloomCount + 1;
 			node->hj_CurTuple = NULL;
 
 			/*
@@ -781,7 +783,7 @@ bool ValuePassesBloomFilter(char * bitArray, int value)
 	int f;
 	for(f = 0; f < NUMHASHFUNCTIONS; f++)
 	{
-		if(!isInBitArray(bitArray, (*BloomHashFunctions[f])(value)))
+		if(!isInBitArray(bitArray, normalizeHashValue((*BloomHashFunctions[f])(value))))
 		{
 			return false;
 		}
@@ -794,6 +796,10 @@ int isInBitArray(char* bitArrays, int queryBucketNumber){
 	char result;
 
 	//integer division!
+	if (queryBucketNumber < 0)
+	{
+		queryBucketNumber = abs(queryBucketNumber);
+	}
         int pointerNumber = queryBucketNumber / 8;
         int arrayOffset = queryBucketNumber % 8;
         if (arrayOffset == 0){

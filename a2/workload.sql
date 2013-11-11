@@ -1,5 +1,5 @@
-SET enable_nestloop TO TRUE;
-SET enable_mergejoin TO TRUE;
+SET enable_nestloop TO FALSE;
+SET enable_mergejoin TO FALSE;
 
-EXPLAIN SELECT * FROM R
+SELECT * FROM R
 	JOIN S ON R.id = S.id;

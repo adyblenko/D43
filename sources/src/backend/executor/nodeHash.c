@@ -28,6 +28,8 @@
 #include "utils/memutils.h"
 #include "utils/lsyscache.h"
 #include <stdio.h>
+#include <math.h>
+
 /*Bloom Filter Hash Functions*/
 int wang_hash(int a);
 int three_shift_hash(int a);
@@ -110,22 +112,17 @@ ExecHash(HashState *node)
 			break;
 		econtext->ecxt_innertuple = slot;
 		ExecHashTableInsert(hashtable, econtext, hashkeys);
-		
-		ExecClearTuple(slot);
-		fprintf(stderr, "Getting join attribute value...");
-		ExecHashGetBucket(hashtable, econtext, hashkeys, &keyval);
-		
-		fprintf(stderr, "got key val!\n");
 
-		fprintf(stderr, "Running through hash functions!\n");
+		ExecHashGetBucket(hashtable, econtext, hashkeys, &keyval);
+		ExecClearTuple(slot);
+
 		//run keyval through bloom filter hash functions and add it
 		for(f = 0; f < NUMHASHFUNCTIONS; f++)
 		{
-			bloomValue = (*BloomHashFunctions[f])(keyval);
+			bloomValue = normalizeHashValue((*BloomHashFunctions[f])(keyval));
 			insertIntoBitArray(node->bloomFilter, bloomValue);
 		}
-		fprintf(stderr, "Completed!\n");
-		
+
 	}
 
 	/*
@@ -293,6 +290,7 @@ ExecHashTableCreate(Hash *node, List *hashOperators)
 			elog(ERROR, "could not find hash function for hash operator %u",
 				 lfirsto(ho));
 		fmgr_info(hashfn, &hashtable->hashfunctions[i]);
+
 		i++;
 	}
 
@@ -586,8 +584,7 @@ ExecHashGetBucket(HashJoinTable hashtable,
 		 */
 		keyval = ExecEvalExpr((ExprState *) lfirst(hk),
 							  econtext, &isNull, NULL);
-
-		*returnJoinValue = keyval;
+		*returnJoinValue = (int)keyval;
 		/*
 		 * Compute the hash function
 		 */
@@ -598,10 +595,10 @@ ExecHashGetBucket(HashJoinTable hashtable,
 			hkey = DatumGetUInt32(FunctionCall1(&hashtable->hashfunctions[i],
 												keyval));
 			hashkey ^= hkey;
-			
+
 		}
-		
-		
+
+
 
 		i++;
 	}
@@ -616,7 +613,6 @@ ExecHashGetBucket(HashJoinTable hashtable,
 #endif
 
 	MemoryContextSwitchTo(oldContext);
-	
 	return bucketno;
 }
 
@@ -803,6 +799,10 @@ int normalizeHashValue(int hashValue){
 void insertIntoBitArray(char* bitArrays, int bucketNumber){
 
 	//integer division!
+	if(bucketNumber < 0)
+	{
+		bucketNumber = abs(bucketNumber);
+	}
 	int pointerNumber = bucketNumber / 8;
 	int arrayOffset = bucketNumber % 8;
 	if (arrayOffset == 0){
