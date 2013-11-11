@@ -14,6 +14,8 @@
 #ifndef EXECNODES_H
 #define EXECNODES_H
 
+#define NUMBUCKETS 1000
+
 #include "access/relscan.h"
 #include "executor/hashjoin.h"
 #include "executor/tuptable.h"
@@ -948,6 +950,7 @@ typedef struct HashJoinState
 	List	   *hj_OuterHashKeys;		/* list of ExprState nodes */
 	List	   *hj_InnerHashKeys;		/* list of ExprState nodes */
 	List	   *hj_HashOperators;		/* list of operator OIDs */
+	char       *hj_BloomFilter;
 	TupleTableSlot *hj_OuterTupleSlot;
 	TupleTableSlot *hj_HashTupleSlot;
 	TupleTableSlot *hj_NullInnerTupleSlot;
@@ -1065,6 +1068,7 @@ typedef struct HashState
 	PlanState	ps;				/* its first field is NodeTag */
 	HashJoinTable hashtable;	/* hash table for the hashjoin */
 	List	   *hashkeys;		/* list of ExprState nodes */
+	char *bloomFilter;
 	/* hashkeys is same as parent's hj_InnerHashKeys */
 } HashState;
 

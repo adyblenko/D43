@@ -22,6 +22,8 @@
 #include "utils/memutils.h"
 
 
+
+
 static TupleTableSlot *ExecHashJoinOuterGetTuple(PlanState *node,
 						  HashJoinState *hjstate);
 static TupleTableSlot *ExecHashJoinGetSavedTuple(HashJoinState *hjstate,
@@ -29,6 +31,9 @@ static TupleTableSlot *ExecHashJoinGetSavedTuple(HashJoinState *hjstate,
 						  TupleTableSlot *tupleSlot);
 static int	ExecHashJoinNewBatch(HashJoinState *hjstate);
 
+//Bit Array Functions
+static int isInBitArray(char * bitArrays, int queryBucketNumber);
+static bool ValuePassesBloomFilter(char * bitArray, int value);
 
 /* ----------------------------------------------------------------
  *		ExecHashJoin
@@ -57,6 +62,7 @@ ExecHashJoin(HashJoinState *node)
 	HeapTuple	curtuple;
 	TupleTableSlot *outerTupleSlot;
 	int			i;
+	int			keyval;
 
 	/*
 	 * get information from HashJoin node
@@ -126,6 +132,9 @@ ExecHashJoin(HashJoinState *node)
 		 */
 		hashNode->hashtable = hashtable;
 		(void) ExecProcNode((PlanState *) hashNode);
+		
+		//bloom filter should be constructed through the hash node
+		node->hj_BloomFilter = hashNode->bloomFilter;
 
 		/*
 		 * Open temp files for outer batches, if needed. Note that file
@@ -155,6 +164,17 @@ ExecHashJoin(HashJoinState *node)
 			{
 				/* end of join */
 				return NULL;
+			}
+			
+			//get value for bloom filter
+			keyval = ExecEvalExpr((ExprState *) lfirst(outerkeys[0]),
+								  	econtext, &isNull, NULL);	
+					
+			if(!ValuePassesBloomFilter(node->hj_BloomFilter, keyval))
+			{
+				//value does not pass bloom filter
+				node->hj_NeedNewOuter = true;
+				continue;	/* loop around for a new outer tuple */
 			}
 
 			node->js.ps.ps_OuterTupleSlot = outerTupleSlot;
@@ -747,4 +767,51 @@ ExecReScanHashJoin(HashJoinState *node, ExprContext *exprCtxt)
 	 */
 	if (((PlanState *) node)->lefttree->chgParam == NULL)
 		ExecReScan(((PlanState *) node)->lefttree, exprCtxt);
+}
+
+static bool ValuePassesBloomFilter(char * bitArray, int value)
+{
+	int f;
+	for(f = 0; f < NUMHASHFUNCTIONS; f++)
+	{
+		if(!isInBitArray(bitArray, (*BloomHashFunctions[f])(value)))
+		{
+			return false;
+		}
+	}
+	return true;
+}
+/*-----------BIT ARRAY FUNCTIONS------------------*/
+int isInBitArray(char* bitArrays, int queryBucketNumber){
+
+	char result;
+
+	//integer division!
+        int pointerNumber = queryBucketNumber / 8;
+        int arrayOffset = queryBucketNumber % 8;
+        if (arrayOffset == 0){
+                arrayOffset = 8;
+        }
+
+        char eightBitArray = bitArrays[pointerNumber];
+
+	switch(arrayOffset){
+                case 1: result = eightBitArray & BIT1;break;
+                case 2: result = eightBitArray & BIT2;break;
+                case 3: result = eightBitArray & BIT3;break;
+                case 4: result = eightBitArray & BIT4;break;
+                case 5: result = eightBitArray & BIT5;break;
+                case 6: result = eightBitArray & BIT6;break;
+                case 7: result = eightBitArray & BIT7;break;
+                case 8: result = eightBitArray & BIT8;break;
+                default: printf("%s %d \n", "Unknown hash value", arrayOffset);
+        }
+
+	printbincharpad(result);
+
+	if (result == 0){
+                return 0;
+        }else{
+                return 1;
+        }
 }

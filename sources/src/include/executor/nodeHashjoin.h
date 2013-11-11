@@ -24,4 +24,8 @@ extern void ExecReScanHashJoin(HashJoinState *node, ExprContext *exprCtxt);
 
 extern void ExecHashJoinSaveTuple(HeapTuple heapTuple, BufFile *file);
 
+//Bit Array Functions
+extern int isInBitArray(char * bitArrays, int queryBucketNumber);
+extern bool ValuePassesBloomFilter(char * bitArray, int value);
+
 #endif   /* NODEHASHJOIN_H */

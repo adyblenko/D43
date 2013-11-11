@@ -28,6 +28,23 @@
 #include "utils/memutils.h"
 #include "utils/lsyscache.h"
 
+#ifndef NUMHASHFUNCTIONS
+#define NUMHASHFUNCTIONS 5
+
+/*Bloom Filter Hash Functions*/
+static int wang_hash(int a);
+static int three_shift_hash(int a);
+static int java_hashmap_hash(int h);
+static int half_avalanche_hash(int a);
+static int full_avalanche_hash( int a);
+
+static int normalizeHashValue(int hashValue);
+
+static int (*BloomHashFunctions[NUMHASHFUNCTIONS]) = {wang_hash, three_shift_hash, java_hashmap_hash, half_avalanche_hash, full_avalanche_hash};
+
+//Bit Array Functions
+static void insertIntoBitArray(char * bitArrays, int bucketNumber);
+static void initArray(char* bitArrays);
 
 /* ----------------------------------------------------------------
  *		ExecHash
@@ -47,6 +64,10 @@ ExecHash(HashState *node)
 	ExprContext *econtext;
 	int			nbatch;
 	int			i;
+	int			f;
+	bool 		isNull;
+	int 		keyval;
+	int 		bloomValue;
 
 	/*
 	 * get state info from node
@@ -72,7 +93,12 @@ ExecHash(HashState *node)
 	 */
 	hashkeys = node->hashkeys;
 	econtext = node->ps.ps_ExprContext;
-
+	
+	//Build the bloom filter here
+	node->bloomFilter = malloc(NUMBUCKETS * sizeof(char));
+	initArray(node->bloomFilter);
+	
+	
 	/*
 	 * get all inner tuples and insert into the hash table (or temp files)
 	 */
@@ -84,6 +110,19 @@ ExecHash(HashState *node)
 		econtext->ecxt_innertuple = slot;
 		ExecHashTableInsert(hashtable, econtext, hashkeys);
 		ExecClearTuple(slot);
+		
+		//add value to bloom filter
+		keyval = ExecEvalExpr((ExprState *) lfirst(hashkeys[0]),
+							  	econtext, &isNull, NULL);				
+		if(!isNull)
+		{
+			//run keyval through bloom filter hash functions and add it
+			for(f = 0; f < NUMHASHFUNCTONS; f++)
+			{
+				bloomValue = (*BloomHashFunctions[f])(keyval);
+				insertIntoBitArray(node->bloomFilter, bloomValue);
+			}
+		}
 	}
 
 	/*
@@ -693,4 +732,97 @@ ExecReScanHash(HashState *node, ExprContext *exprCtxt)
 	 */
 	if (((PlanState *) node)->lefttree->chgParam == NULL)
 		ExecReScan(((PlanState *) node)->lefttree, exprCtxt);
+}
+
+/*-----------Bloom Filter Hash Functions----------------------------------*/
+
+static int wang_hash(int a)
+{
+    a = (a ^ 61) ^ (a >> 16);
+    a = a + (a << 3);
+    a = a ^ (a >> 4);
+    a = a * 0x27d4eb2d;
+    a = a ^ (a >> 15);
+    return a;
+}
+
+static int three_shift_hash( int a)
+{
+    a = a ^ (a>>4);
+    a = (a^0xdeadbeef) + (a<<5);
+    a = a ^ (a>>11);
+    return a;
+}
+
+static int java_hashmap_hash(int h) {
+    // This function ensures that hashCodes that differ only by
+    // constant multiples at each bit position have a bounded
+    // number of collisions (approximately 8 at default load factor).
+    h ^= (h >> 20) ^ (h >> 12);
+    return h ^ (h >> 7) ^ (h >> 4);
+}
+
+static int half_avalanche_hash( int a)
+{
+    a = (a+0x479ab41d) + (a<<8);
+    a = (a^0xe4aa10ce) ^ (a>>5);
+    a = (a+0x9942f0a6) - (a<<14);
+    a = (a^0x5aedd67d) ^ (a>>3);
+    a = (a+0x17bea992) + (a<<7);
+    return a;
+}
+
+static int full_avalanche_hash( int a)
+{
+    a = (a+0x7ed55d16) + (a<<12);
+    a = (a^0xc761c23c) ^ (a>>19);
+    a = (a+0x165667b1) + (a<<5);
+    a = (a+0xd3a2646c) ^ (a<<9);
+    a = (a+0xfd7046c5) + (a<<3);
+    a = (a^0xb55a4f09) ^ (a>>16);
+    return a;
+}
+
+static int normalizeHashValue(int hashValue){
+	int normalized = hashValue / ((double)INT_MAX / ((double)NUMBUCKETS-1.0)) + 1.0;
+	//printf("%s %d \n", "normalized", normalized);
+	return normalized;
+}
+
+/*------------Bit Array Functions----------------------*/
+
+void insertIntoBitArray(char* bitArrays, int bucketNumber){
+
+	//integer division!
+	int pointerNumber = bucketNumber / 8;
+	int arrayOffset = bucketNumber % 8;
+	if (arrayOffset == 0){
+		arrayOffset = 8;
+	}
+
+	char eightBitArray = bitArrays[pointerNumber];
+
+	switch(arrayOffset){
+                case 1: eightBitArray |= BIT1;break;
+                case 2: eightBitArray |= BIT2;break;
+                case 3: eightBitArray |= BIT3;break;
+                case 4: eightBitArray |= BIT4;break;
+                case 5: eightBitArray |= BIT5;break;
+                case 6: eightBitArray |= BIT6;break;
+                case 7: eightBitArray |= BIT7;break;
+                case 8: eightBitArray |= BIT8;break;
+                default: printf("%s %d \n", "Unknown bucket", arrayOffset);
+        }
+
+	printbincharpad(eightBitArray);
+
+	bitArrays[pointerNumber] = eightBitArray;
+}
+
+void initArray(char* bitArrays){
+
+	int i;
+  	for(i=0;i<NUMBUCKETS;i++){
+		bitArrays[i] = 0;
+	}
 }
