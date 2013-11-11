@@ -56,7 +56,6 @@ ExecHashJoin(HashJoinState *node)
 	List	   *outerkeys;
 	List	   *joinqual;
 	List	   *otherqual;
-	List	   *key;
 	ScanDirection dir;
 	TupleTableSlot *inntuple;
 	ExprContext *econtext;
@@ -176,24 +175,6 @@ ExecHashJoin(HashJoinState *node)
 				return NULL;
 			}
 
-			foreach(key, outerkeys)
-			{
-
-
-				//get value for bloom filter
-				keyval = ExecEvalExpr((ExprState *) lfirst(key),
-									  	econtext, &isNull, NULL);
-			}
-
-			if(!ValuePassesBloomFilter(node->hj_BloomFilter, keyval))
-			{
-				//value does not pass bloom filter
-				node->hj_NeedNewOuter = true;
-				continue;	/* loop around for a new outer tuple */
-			}
-
-			allowCount ++;
-
 			node->js.ps.ps_OuterTupleSlot = outerTupleSlot;
 			econtext->ecxt_outertuple = outerTupleSlot;
 			node->hj_NeedNewOuter = false;
@@ -204,7 +185,16 @@ ExecHashJoin(HashJoinState *node)
 			 * for this tuple from the hash table
 			 */
 			node->hj_CurBucketNo = ExecHashGetBucket(hashtable, econtext,
-													 outerkeys);
+													 outerkeys, &keyval);
+													
+ 			if(!ValuePassesBloomFilter(node->hj_BloomFilter, keyval))
+ 			{
+ 				//value does not pass bloom filter
+ 				node->hj_NeedNewOuter = true;
+ 				continue;	/* loop around for a new outer tuple */
+ 			}
+
+ 			allowCount ++;
 			node->hj_CurTuple = NULL;
 
 			/*

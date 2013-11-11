@@ -505,9 +505,9 @@ ExecHashTableDestroy(HashJoinTable hashtable)
 void
 ExecHashTableInsert(HashJoinTable hashtable,
 					ExprContext *econtext,
-					List *hashkeys)
+					List *hashkeys, int* returnJoinValue)
 {
-	int			bucketno = ExecHashGetBucket(hashtable, econtext, hashkeys);
+	int			bucketno = ExecHashGetBucket(hashtable, econtext, hashkeys, returnJoinValue);
 	int			batchno = ExecHashGetBatch(bucketno, hashtable);
 	TupleTableSlot *slot = econtext->ecxt_innertuple;
 	HeapTuple	heapTuple = slot->val;
@@ -558,7 +558,8 @@ ExecHashTableInsert(HashJoinTable hashtable,
 int
 ExecHashGetBucket(HashJoinTable hashtable,
 				  ExprContext *econtext,
-				  List *hashkeys)
+				  List *hashkeys,
+				  int* returnJoinValue)
 {
 	uint32		hashkey = 0;
 	int			bucketno;
@@ -613,6 +614,8 @@ ExecHashGetBucket(HashJoinTable hashtable,
 #endif
 
 	MemoryContextSwitchTo(oldContext);
+	
+	*returnJoinValue = keyval;
 
 	return bucketno;
 }
