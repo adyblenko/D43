@@ -110,25 +110,22 @@ ExecHash(HashState *node)
 			break;
 		econtext->ecxt_innertuple = slot;
 		ExecHashTableInsert(hashtable, econtext, hashkeys);
+		
 		ExecClearTuple(slot);
 		fprintf(stderr, "Getting join attribute value...");
-		foreach(key, hashkeys)
-		{
-			//add value to bloom filter
-			keyval = ExecEvalExpr((ExprState *) lfirst(key), econtext, &isNull, NULL);
-		}
+		ExecHashGetBucket(hashtable, econtext, hashkeys, &keyval);
+		
 		fprintf(stderr, "Join attribute val = %d\n", keyval);
-		if(!isNull)
+
+		fprintf(stderr, "Running through hash functions!\n");
+		//run keyval through bloom filter hash functions and add it
+		for(f = 0; f < NUMHASHFUNCTIONS; f++)
 		{
-			fprintf(stderr, "Running through hash functions!\n");
-			//run keyval through bloom filter hash functions and add it
-			for(f = 0; f < NUMHASHFUNCTIONS; f++)
-			{
-				bloomValue = (*BloomHashFunctions[f])(keyval);
-				insertIntoBitArray(node->bloomFilter, bloomValue);
-			}
-			fprintf(stderr, "Completed!\n");
+			bloomValue = (*BloomHashFunctions[f])(keyval);
+			insertIntoBitArray(node->bloomFilter, bloomValue);
 		}
+		fprintf(stderr, "Completed!\n");
+		
 	}
 
 	/*
@@ -505,9 +502,10 @@ ExecHashTableDestroy(HashJoinTable hashtable)
 void
 ExecHashTableInsert(HashJoinTable hashtable,
 					ExprContext *econtext,
-					List *hashkeys, int* returnJoinValue)
+					List *hashkeys)
 {
-	int			bucketno = ExecHashGetBucket(hashtable, econtext, hashkeys, returnJoinValue);
+	int keyvalDummy;
+	int			bucketno = ExecHashGetBucket(hashtable, econtext, hashkeys, &keyvalDummy);
 	int			batchno = ExecHashGetBatch(bucketno, hashtable);
 	TupleTableSlot *slot = econtext->ecxt_innertuple;
 	HeapTuple	heapTuple = slot->val;
@@ -600,6 +598,8 @@ ExecHashGetBucket(HashJoinTable hashtable,
 												keyval));
 			hashkey ^= hkey;
 		}
+		
+		*returnJoinValue = keyval;
 
 		i++;
 	}
@@ -615,8 +615,6 @@ ExecHashGetBucket(HashJoinTable hashtable,
 
 	MemoryContextSwitchTo(oldContext);
 	
-	*returnJoinValue = keyval;
-
 	return bucketno;
 }
 

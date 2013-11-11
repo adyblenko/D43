@@ -31,7 +31,7 @@ extern void ExecHashTableInsert(HashJoinTable hashtable,
 					List *hashkeys);
 extern int ExecHashGetBucket(HashJoinTable hashtable,
 				  ExprContext *econtext,
-				  List *hashkeys);
+				  List *hashkeys, int * returnJoinValue);
 extern int	ExecHashGetBatch(int bucketno, HashJoinTable hashtable);
 extern HeapTuple ExecScanHashBucket(HashJoinState *hjstate, List *hjclauses,
 				   ExprContext *econtext);
