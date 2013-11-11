@@ -20,6 +20,7 @@
 #include "executor/nodeHashjoin.h"
 #include "optimizer/clauses.h"
 #include "utils/memutils.h"
+#include <stdio.h>
 
 
 
@@ -47,6 +48,7 @@ bool ValuePassesBloomFilter(char * bitArray, int value);
 TupleTableSlot *				/* return: a tuple or NULL */
 ExecHashJoin(HashJoinState *node)
 {
+
 	EState	   *estate;
 	PlanState  *outerNode;
 	HashState  *hashNode;
@@ -65,6 +67,7 @@ ExecHashJoin(HashJoinState *node)
 	int			i;
 	int			keyval;
 	bool 			isNull;
+	int allowCount = 0;
 	/*
 	 * get information from HashJoin node
 	 */
@@ -131,11 +134,16 @@ ExecHashJoin(HashJoinState *node)
 		/*
 		 * execute the Hash node, to build the hash table
 		 */
+
+		fprintf(stderr, "Beginning construction of Hash Table and Bloom Filter...\n");
+
 		hashNode->hashtable = hashtable;
 		(void) ExecProcNode((PlanState *) hashNode);
 
 		//bloom filter should be constructed through the hash node
 		node->hj_BloomFilter = hashNode->bloomFilter;
+
+		fprintf(stderr, "Hash Table and Bloom Filter Have Been Built.\n");
 
 		/*
 		 * Open temp files for outer batches, if needed. Note that file
@@ -164,6 +172,7 @@ ExecHashJoin(HashJoinState *node)
 			if (TupIsNull(outerTupleSlot))
 			{
 				/* end of join */
+				fprintf(stderr, "The number that passed the filter is: %d\n", allowCount);
 				return NULL;
 			}
 
@@ -182,6 +191,8 @@ ExecHashJoin(HashJoinState *node)
 				node->hj_NeedNewOuter = true;
 				continue;	/* loop around for a new outer tuple */
 			}
+
+			allowCount ++;
 
 			node->js.ps.ps_OuterTupleSlot = outerTupleSlot;
 			econtext->ecxt_outertuple = outerTupleSlot;

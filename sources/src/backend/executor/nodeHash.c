@@ -27,7 +27,7 @@
 #include "parser/parse_expr.h"
 #include "utils/memutils.h"
 #include "utils/lsyscache.h"
-
+#include <stdio.h>
 /*Bloom Filter Hash Functions*/
 int wang_hash(int a);
 int three_shift_hash(int a);
@@ -93,8 +93,11 @@ ExecHash(HashState *node)
 	econtext = node->ps.ps_ExprContext;
 
 	//Build the bloom filter here
+	fprintf(stderr, "Beginning bloomFilter malloc...\n");
 	node->bloomFilter = malloc(NUMBUCKETS * sizeof(char));
+	fprintf(stderr, "Completed malloc, initializing array....\n");
 	initArray(node->bloomFilter);
+	fprintf(stderr, "Completed array initialization....\n");
 
 
 	/*
@@ -108,20 +111,23 @@ ExecHash(HashState *node)
 		econtext->ecxt_innertuple = slot;
 		ExecHashTableInsert(hashtable, econtext, hashkeys);
 		ExecClearTuple(slot);
-
+		fprintf(stderr, "Getting join attribute value...");
 		foreach(key, hashkeys)
 		{
 			//add value to bloom filter
 			keyval = ExecEvalExpr((ExprState *) lfirst(key), econtext, &isNull, NULL);
 		}
+		fprintf(stderr, "Join attribute val = %d\n", keyval);
 		if(!isNull)
 		{
+			fprintf(stderr, "Running through hash functions!\n");
 			//run keyval through bloom filter hash functions and add it
 			for(f = 0; f < NUMHASHFUNCTIONS; f++)
 			{
 				bloomValue = (*BloomHashFunctions[f])(keyval);
 				insertIntoBitArray(node->bloomFilter, bloomValue);
 			}
+			fprintf(stderr, "Completed!\n");
 		}
 	}
 
