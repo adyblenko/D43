@@ -36,6 +36,7 @@ static int ExecHashJoinNewBatch(HashJoinState *hjstate);
 int isInBitArray(char * bitArrays, int queryBucketNumber);
 bool ValuePassesBloomFilter(char * bitArray, int value);
 
+static int bloomCount = 0;
 /* ----------------------------------------------------------------
  *		ExecHashJoin
  *
@@ -66,7 +67,7 @@ ExecHashJoin(HashJoinState *node)
 	int			i;
 	int			keyval = 0;
 	bool 			isNull = false;
-	int bloomCount = 0;
+	
 	/*
 	 * get information from HashJoin node
 	 */
@@ -160,7 +161,6 @@ ExecHashJoin(HashJoinState *node)
 
 	for (;;)
 	{
-		fprintf(stderr, "Back here!");
 		/*
 		 * If we don't have an outer tuple, get the next one
 		 */
@@ -172,6 +172,7 @@ ExecHashJoin(HashJoinState *node)
 			{
 				/* end of join */
 				fprintf(stderr, "The number that passed the filter is: %d\n", bloomCount);
+				bloomCount = 0;
 				return NULL;
 			}
 
@@ -196,7 +197,7 @@ ExecHashJoin(HashJoinState *node)
  			}
 
 			fprintf(stderr, "Allow count: %d\n", bloomCount);
- 			bloomCount = bloomCount + 1;
+ 			bloomCount++;
 			node->hj_CurTuple = NULL;
 
 			/*
