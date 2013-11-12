@@ -196,7 +196,7 @@ ExecHashJoin(HashJoinState *node)
  				continue;	/* loop around for a new outer tuple */
  			}
 
- 			bloomCount++;
+ 			
 			node->hj_CurTuple = NULL;
 
 			/*
@@ -223,6 +223,8 @@ ExecHashJoin(HashJoinState *node)
 				}
 			}
 		}
+		
+		bloomCount++;
 
 		/*
 		 * OK, scan the selected hash bucket for matches
@@ -269,7 +271,6 @@ ExecHashJoin(HashJoinState *node)
 					{
 						node->js.ps.ps_TupFromTlist =
 							(isDone == ExprMultipleResult);
-						bloomCount = 0;
 						return result;
 					}
 				}
@@ -319,7 +320,6 @@ ExecHashJoin(HashJoinState *node)
 				{
 					node->js.ps.ps_TupFromTlist =
 						(isDone == ExprMultipleResult);
-					bloomCount = 0;
 					return result;
 				}
 			}
