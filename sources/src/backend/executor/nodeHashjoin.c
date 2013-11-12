@@ -190,7 +190,6 @@ ExecHashJoin(HashJoinState *node)
 
  			if(!ValuePassesBloomFilter(node->hj_BloomFilter, keyval))
  			{
-				fprintf(stderr, "It did not.");
  				//value does not pass bloom filter
  				node->hj_NeedNewOuter = true;
  				continue;	/* loop around for a new outer tuple */
