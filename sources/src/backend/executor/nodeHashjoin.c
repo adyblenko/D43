@@ -224,7 +224,7 @@ ExecHashJoin(HashJoinState *node)
 			}
 		}
 		
-		bloomCount++;
+		
 
 		/*
 		 * OK, scan the selected hash bucket for matches
@@ -324,6 +324,7 @@ ExecHashJoin(HashJoinState *node)
 				}
 			}
 		}
+		bloomCount++;
 	}
 }
 
