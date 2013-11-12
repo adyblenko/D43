@@ -270,6 +270,8 @@ ExecHashJoin(HashJoinState *node)
 					{
 						node->js.ps.ps_TupFromTlist =
 							(isDone == ExprMultipleResult);
+						fprintf(stderr, "The number that passed the filter is: %d\n", bloomCount);
+						bloomCount = 0;
 						return result;
 					}
 				}
@@ -319,6 +321,8 @@ ExecHashJoin(HashJoinState *node)
 				{
 					node->js.ps.ps_TupFromTlist =
 						(isDone == ExprMultipleResult);
+					fprintf(stderr, "The number that passed the filter is: %d\n", bloomCount);
+					bloomCount = 0;
 					return result;
 				}
 			}
