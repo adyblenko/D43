@@ -196,7 +196,6 @@ ExecHashJoin(HashJoinState *node)
  				continue;	/* loop around for a new outer tuple */
  			}
 
-			fprintf(stderr, "Allow count: %d\n", bloomCount);
  			bloomCount++;
 			node->hj_CurTuple = NULL;
 
@@ -270,7 +269,6 @@ ExecHashJoin(HashJoinState *node)
 					{
 						node->js.ps.ps_TupFromTlist =
 							(isDone == ExprMultipleResult);
-						fprintf(stderr, "The number that passed the filter is: %d\n", bloomCount);
 						bloomCount = 0;
 						return result;
 					}
@@ -321,7 +319,6 @@ ExecHashJoin(HashJoinState *node)
 				{
 					node->js.ps.ps_TupFromTlist =
 						(isDone == ExprMultipleResult);
-					fprintf(stderr, "The number that passed the filter is: %d\n", bloomCount);
 					bloomCount = 0;
 					return result;
 				}
